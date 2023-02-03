@@ -2,6 +2,7 @@ package integration;
 
 import app.foot.FootApi;
 import app.foot.controller.rest.Player;
+import app.foot.exception.BadRequestException;
 import app.foot.exception.NotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
@@ -25,13 +26,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-<<<<<<< HEAD
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static utils.TestUtils.assertThrowsExceptionMessage;
 import static utils.TestUtils.convertFromHttpResponse;
 import static utils.TestUtils.normalizeKnownExceptionMessage;
-=======
->>>>>>> origin/dev
 
 @SpringBootTest(classes = FootApi.class)
 @AutoConfigureMockMvc
@@ -41,7 +39,7 @@ class PlayerIntegrationTest {
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final int NON_EXISTING_PLAYER_ID = 47;
+    private static final int NON_EXISTING_PLAYER_ID = 51;
 
     Player player1() {
         return Player.builder()
@@ -71,10 +69,11 @@ class PlayerIntegrationTest {
     }
 
     @Test
+    // make test containing crupdate @Transactional to be more predictable
     @Transactional
     void create_players_ok() throws Exception {
         Player toCreate = Player.builder()
-                .name("Jack")
+                .name("Joe Doe")
                 .isGuardian(false)
                 .teamName("E1")
                 .build();
@@ -97,10 +96,11 @@ class PlayerIntegrationTest {
     @Test
     void create_players_ko() throws Exception {
         Player _toCreate = Player.builder()
-                .id(10)
-                .name("J10")
+                .id(100)
+                .name("J100")
                 .isGuardian(false)
-                .teamName("E10")
+                // non existing team name
+                .teamName("E100")
                 .build();
 
         RequestBuilder request = post("/players")
@@ -111,18 +111,19 @@ class PlayerIntegrationTest {
 
         String exceptionMessage = normalizeKnownExceptionMessage(
                 "Team" + _toCreate.getTeamName() + " not found.",
-                HttpStatus.NOT_FOUND
+                HttpStatus.BAD_REQUEST
         );
 
-        assertThrowsExceptionMessage(exceptionMessage, NotFoundException.class, () -> {
+        assertThrowsExceptionMessage(exceptionMessage, BadRequestException.class, () -> {
             throw exception.getRootCause();
         });
     }
 
 
     @Test
+    // make test containing crupdate @Transactional to be more predictable
     @Transactional
-    void put_players_ok() throws Exception {
+    void edit_players_ok() throws Exception {
         Player toBeUpdated = player1().toBuilder()
                 .name("JD1")
                 .isGuardian(true)
@@ -147,7 +148,7 @@ class PlayerIntegrationTest {
 
 
     @Test
-    void put_players_ko() throws Exception {
+    void edit_players_ko() throws Exception {
         Player toBeUpdated = Player.builder()
                 .id(NON_EXISTING_PLAYER_ID)
                 .name("JMore")
@@ -162,7 +163,7 @@ class PlayerIntegrationTest {
         ServletException exception = assertThrows(ServletException.class, () -> mockMvc.perform(request));
 
         String exceptionMessage = normalizeKnownExceptionMessage(
-                "Player" + toBeUpdated.getId() + " not found.",
+                "Player#" + toBeUpdated.getId() + " not found.",
                 HttpStatus.NOT_FOUND
         );
 
@@ -188,36 +189,4 @@ class PlayerIntegrationTest {
                 player2(),
                 player3())));
     }
-<<<<<<< HEAD
-=======
-
-    @Test
-    void create_players_ok() throws Exception {
-        Player toCreate = Player.builder()
-                .name("Joe Doe")
-                .isGuardian(false)
-                .teamName("E1")
-                .build();
-        MockHttpServletResponse response = mockMvc
-                .perform(post("/players")
-                        .content(objectMapper.writeValueAsString(List.of(toCreate)))
-                        .contentType("application/json")
-                        .accept("application/json"))
-                .andReturn()
-                .getResponse();
-        List<Player> actual = convertFromHttpResponse(response);
-
-        assertEquals(1, actual.size());
-        assertEquals(toCreate, actual.get(0).toBuilder().id(null).build());
-    }
-
-    private List<Player> convertFromHttpResponse(MockHttpServletResponse response)
-            throws JsonProcessingException, UnsupportedEncodingException {
-        CollectionType playerListType = objectMapper.getTypeFactory()
-                .constructCollectionType(List.class, Player.class);
-        return objectMapper.readValue(
-                response.getContentAsString(),
-                playerListType);
-    }
->>>>>>> origin/dev
 }
